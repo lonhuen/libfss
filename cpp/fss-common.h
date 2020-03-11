@@ -38,6 +38,12 @@ struct CWLt {
     uint64_t cv[2];
 };
 
+struct CWLt_lonhh {
+    unsigned char cs[16];
+    unsigned char ct[2];
+    uint64_t cv[2];
+};
+
 struct ServerKeyEq {
     unsigned char s[2][16];
     unsigned char t[2];
@@ -50,6 +56,12 @@ struct ServerKeyLt {
     unsigned char t[2];
     uint64_t v[2];
     CWLt* cw[2];
+};
+
+struct ServerKeyLt_lonhh {
+    unsigned char s[16];
+    unsigned char t;
+    CWLt_lonhh* cw;
 };
 
 struct MPLtKey {

@@ -16,4 +16,6 @@ uint64_t evaluateLt(Fss* f, ServerKeyLt *k, uint64_t x);
 // Runs point(delta) FSS given key on input x for 3 or more parties/providers
 uint32_t evaluateEqMParty(Fss *f, MPKey* key, uint32_t x);
 
+uint64_t evaluateLt_lonhh(Fss* f, ServerKeyLt_lonhh *k, uint64_t x);
+
 #endif

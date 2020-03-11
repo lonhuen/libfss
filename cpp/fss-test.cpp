@@ -6,23 +6,49 @@
 int main()
 {
     // Set up variables
-    uint64_t a = 3;
-    uint64_t b = 2;
+    uint64_t a = 1024;
+    uint64_t b = 10;
     Fss fClient, fServer;
-    ServerKeyEq k0;
-    ServerKeyEq k1;
+    ServerKeyLt_lonhh k0;
+    ServerKeyLt_lonhh k1;
 
     // Initialize client, use 10 bits in domain as example
-    initializeClient(&fClient, 10, 2); 
+    initializeClient(&fClient, 64, 2); 
     
     // Equality FSS test
-    generateTreeEq(&fClient, &k0, &k1, a, b);
     
+    initializeServer(&fServer, &fClient);
+    
+    uint64_t lt_ans0, lt_ans1, lt_fin;
+
+    //lt_ans0 = evaluateLt_lonhh(&fServer, &k0, a-1);
+    //lt_ans1 = evaluateLt_lonhh(&fServer, &k1, a-1);
+    //cout << lt_ans0 - lt_ans1 << endl;
+    int nr_error = 0;
+    for(a=0;a<1024;a++) {
+        generateTreeLt_lonhh(&fClient, &k0, &k1, a, b);
+        for(int i=0;i<2048;i++) {
+            lt_ans0 = evaluateLt_lonhh(&fServer, &k0, i);
+            lt_ans1 = evaluateLt_lonhh(&fServer, &k1, i);
+            if((i < a) && (lt_ans0 - lt_ans1 != b)) {
+                nr_error++;
+            } else if((i >= a) && (lt_ans0 - lt_ans1 != 0)) {
+                nr_error++;
+            }
+        }
+        if(nr_error)
+            cout << a << endl;
+    }
+    //lt_fin = lt_ans0 - lt_ans1;
+    //cout << "FSS Lt Match (should be non-zero): " << lt_fin << endl;
+
+}
+/*    
     // Initialize server
     initializeServer(&fServer, &fClient);
     mpz_class ans0, ans1, fin;
     
-    ans0 = evaluateEq(&fServer, &k0, a);
+    ans0 = evaluateLt(&fServer, &k0, a);
     ans1 = evaluateEq(&fServer, &k1, a);
     fin = ans0 - ans1;
     cout << "FSS Eq Match (should be non-zero): " << fin << endl;
@@ -87,3 +113,4 @@ int main()
      << " ms" << endl;
     return 1;
 }
+*/

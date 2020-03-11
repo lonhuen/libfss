@@ -163,3 +163,43 @@ uint32_t evaluateEqMParty(Fss *f, MPKey* key, uint32_t x)
     free(temp_out);
     return final_ans;
 }
+
+
+uint64_t evaluateLt_lonhh(Fss* f, ServerKeyLt_lonhh *k, uint64_t x) {
+
+    uint32_t n = f->numBits;
+
+    unsigned char s[16];
+    memcpy(s, k->s, 16);
+    unsigned char t = k->t;
+    uint64_t v = 0;
+
+    unsigned char sArray[32];
+    unsigned char temp[2];
+    unsigned char out[64];
+    uint64_t temp_v;
+
+    for (uint32_t i = 0; i < n; i++) {
+        int xi = getBit(x, (64-n+i+1));
+
+        prf(out, s, 64, f->aes_keys, f->numKeys);
+        memcpy(sArray, out, 32);
+        temp[0] = out[32] % 2;
+        temp[1] = out[33] % 2;
+
+        temp_v = byteArr2Int64((unsigned char*) (out + 40 + (8*xi)));
+
+        int xStart = 16 * xi;
+        memcpy(s, (unsigned char*) (sArray + xStart), 16);
+        for (uint32_t j = 0; j < 16; j++) {
+            s[j] = s[j] ^ (k->cw[i].cs[j] * t);
+        }
+
+        v = (v + temp_v);
+        v = (v + k->cw[i].cv[xi] * t);
+        t = temp[xi] ^ (k->cw[i].ct[xi] * t);
+    }
+    
+    return v;
+    //return byteArr2Int64(s);
+}

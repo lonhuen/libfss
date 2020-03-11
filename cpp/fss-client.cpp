@@ -487,6 +487,151 @@ void generateTreeLt(Fss* f, ServerKeyLt* k0, ServerKeyLt* k1, uint64_t a_i, uint
 
 }
 
+void generateTreeLt_lonhh(Fss* f, ServerKeyLt_lonhh* k0, ServerKeyLt_lonhh* k1, uint64_t a_i, uint64_t b_i) {
+    uint32_t n = f->numBits;
+
+    // Set up num_bits and allocate memory
+    k0->cw = (CWLt_lonhh*) malloc(sizeof(CWLt_lonhh) * n);
+    k1->cw = (CWLt_lonhh*) malloc(sizeof(CWLt_lonhh) * n);
+
+    // create arrays size (AES_key_size*2 + 2)
+    unsigned char s0[16];
+    unsigned char s1[16];
+
+    // Set initial seeds for PRF
+    if(!RAND_bytes((unsigned char*) s0, 16)) {
+        printf("Random bytes failed\n");
+        exit(1);
+    }
+    if (!RAND_bytes((unsigned char*) s1, 16)) {
+        printf("Random bytes failed\n");
+        exit(1);
+    }
+
+    unsigned char t0;
+    unsigned char t1;
+    unsigned char temp;
+    if (!RAND_bytes((unsigned char*) (&temp), 1)) {
+        printf("Random bytes failed\n");
+        exit(1);
+    }
+
+    // Figure out initial ts
+    // Make sure t0a and t1a are different
+    //t0 = temp % 2;
+    //t1 = (t0 + 1) % 2;
+    t0 = 0;
+    t1 = 1;
+
+    memcpy(k0->s, s0, 16);
+    memcpy(k1->s, s1, 16);
+    k0->t = t0;
+    k1->t = t1;
+
+    //unsigned char tbit0 = t0;
+    //unsigned char tbit1 = t1;
+
+    //unsigned char ct1[2];
+
+    //uint64_t v;
+    unsigned char out0[64];
+    unsigned char out1[64];
+    uint64_t v0[2];
+    uint64_t v1[2];
+    unsigned char cs[16];
+    unsigned char ct0;
+    unsigned char ct1;
+    uint64_t cv0;
+    uint64_t cv1;
+    
+    int a;
+    int na;
+
+    for (uint32_t i = 0; i < n; i++) {
+        f->aes_keys = prf(out0, s0, 64, f->aes_keys, f->numKeys);
+        f->aes_keys = prf(out1, s1, 64, f->aes_keys, f->numKeys);
+
+        out0[32] = out0[32] % 2;
+        out0[33] = out0[33] % 2;
+        out1[32] = out1[32] % 2;
+        out1[33] = out1[33] % 2;
+
+        v0[0] = byteArr2Int64((unsigned char*) (out0 + 40));
+        v0[1] = byteArr2Int64((unsigned char*) (out0 + 48));
+        v1[0] = byteArr2Int64((unsigned char*) (out1 + 40));
+        v1[1] = byteArr2Int64((unsigned char*) (out1 + 48));
+
+        // 1 to 64
+        a = getBit(a_i, (64-n+i+1));
+        na = a ^ 1;
+
+        // Redefine aStart and naStart based on new a's
+        int aStart = 16 * a;
+        int naStart = 16 * na;
+
+        // cs
+        for (uint32_t j = 0; j < 16; j++) {
+            cs[j] = out0[naStart+j] ^ out1[naStart+j];
+        }
+
+        // ct0
+        ct0 = out0[32] ^ out1[32] ^ a ^ 1;
+        ct1 = out0[33] ^ out1[33] ^ a;
+
+        // cv
+        cv0 = v0[0] - v1[0] - b_i * a; 
+        if(t0) {
+            cv0 = -cv0;
+        }
+
+        cv1 = v0[1] - v1[1];
+        if(t0) {
+            cv1 = -cv1;
+        }
+
+        // Copy appropriate values into key
+        memcpy(k0->cw[i].cs, cs, 16);
+        k0->cw[i].ct[0] = ct0;
+        k0->cw[i].ct[1] = ct1;
+
+        k0->cw[i].cv[0] = cv0;
+        k0->cw[i].cv[1] = cv1;
+
+        memcpy(k1->cw[i].cs, cs, 16);
+        k1->cw[i].ct[0] = ct0;
+        k1->cw[i].ct[1] = ct1;
+        
+        k1->cw[i].cv[0] = cv0;
+        k1->cw[i].cv[1] = cv1;
+
+        unsigned char* rs;
+        if(a == 1) {
+            // update s0
+            rs = (unsigned char*)(out0 + 16);
+            for(int j=0;j<16;j++) {
+                s0[j] = rs[j] ^ (cs[j] * t0);
+            }
+            rs = (unsigned char*)(out1 + 16);
+            for(int j=0;j<16;j++) {
+                s1[j] = rs[j] ^ (cs[j] * t1);
+            }
+            // update  t0 and t1
+            t0 = out0[33] ^ (ct1 * t0);
+            t1 = out1[33] ^ (ct1 * t1);
+        } else {
+            rs = (unsigned char*)(out0);
+            for(int j=0;j<16;j++) {
+                s0[j] = rs[j] ^ (cs[j] * t0);
+            }
+            rs = (unsigned char*)(out1);
+            for(int j=0;j<16;j++) {
+                s1[j] = rs[j] ^ (cs[j] * t1);
+            }
+            t0 = out0[32] ^ (ct0 * t0);
+            t1 = out1[32] ^ (ct0 * t1);
+        }
+    }
+}
 // This function is for multi-party (3 or more parties) FSS
 // for equality functions
 // The API interface is similar to the 2 party version.
